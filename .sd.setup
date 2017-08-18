@@ -1,0 +1,67 @@
+#!/usr/bin/env python
+
+import os, subprocess, shutil
+opj = os.path.join
+MAIN = os.path.split(os.path.abspath(__file__))[0]
+CUR_DIR = os.getcwd()
+
+def set_sagedays_number():
+    SDNUM = raw_input('Which Sage Days is this (e.g. "88")? ')
+    with open(opj(MAIN,'.sd.num'),'w') as F:
+        F.write(SDNUM)
+
+def modify_bashrc():
+    print "Changing PATH for non-interactive prompts...."
+    with open(opj(MAIN, '.bashrc')) as F:
+        contents = F.readlines()
+    contents.insert(0,"LANG=en_US.UTF-8\n")
+    contents.insert(0,"export PATH=$HOME/bin:$HOME/.local/bin:$PATH\n")
+    with open(opj(MAIN, '.bashrc'),'w') as F:
+        F.write("".join(contents))
+
+def lock_gitconfig():
+    print "Creating unreadable .gitconfig to prevent global git settings...."
+    config = opj(MAIN,'.gitconfig')
+    subprocess.call(["touch",config])
+    subprocess.call(["chmod",'000',config])
+
+def setup_git_trac():
+    print "Downloading git-trac-command...."
+    os.chdir(opj(MAIN,'Src'))
+    subprocess.call(['git','clone','https://github.com/sagemath/git-trac-command.git'])
+    os.symlink(opj(MAIN,'Src','git-trac-command','bin','git-trac'),opj(MAIN,'bin','git-trac'))
+
+def setup_git_tab_completion():
+    print "Setting up tab completion for git branches...."
+    os.chdir(MAIN)
+    subprocess.call(['wget','https://raw.githubusercontent.com/git/git/master/contrib/completion/git-completion.bash'])
+    shutil.move('git-completion.bash','.git-completion.bash')
+
+def setup_binary_pkg():
+    print "Setting up binary_pkg...."
+    os.chdir(opj(MAIN,'Src'))
+    subprocess.call(['git','clone','https://github.com/sagemath/binary-pkg.git'])
+    sageyaml = opj(MAIN,'Src','binary-pkg','sage.yaml')
+    subprocess.call(['sed','-i','""','s/SAGE_FAT_BINARY=yes/SAGE_FAT_BINARY=no/',sageyaml])
+    subprocess.call(['sed','-i','""',r's:tar cjf {dist}/sage-{version}-{osname}-{arch}\.tar\.bz2 {path}:tar c {path} | lz4 -z - {dist}/sage-latest.tar.lz4:', sageyaml])
+
+def create_sage_tarball():
+    print "Creating Sage tarball.  This process will take some time."
+    print "You can track progress by running\n    'tail -f %s/Src/binary-pkg/make.out'\nin another terminal"%MAIN
+    os.chdir(opj(MAIN,'Src','binary-pkg'))
+    with open('make.out','w') as F:
+        subprocess.call(['make','package-sage'],stdout=F, stderr=subprocess.STDOUT)
+    shutil.move(opj('dist','sage-latest.tar.lz4'),opj(MAIN,'Src','sage-latest.tar.lz4'))
+
+def setup():
+    print "Setting up Sage Days environment...."
+    set_sagedays_number()
+    modify_bashrc()
+    lock_gitconfig()
+    setup_git_trac()
+    setup_git_tab_completion()
+    setup_binary_pkg()
+    create_sage_tarball()
+    print "Sage Days environment setup complete!"
+
+setup()

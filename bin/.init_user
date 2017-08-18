@@ -1,0 +1,45 @@
+#!/usr/bin/env bash
+
+# if you want a quiet login, use command=".init_user -q USER"
+if [ "$1" = "-q" ]
+then
+    QUIET=yes
+    shift
+fi
+
+case "$HOME" in
+    */user/$USER)
+        echo "Already initialized as '$USER'" >& 2
+        exit 1
+esac
+
+user="$1"
+home="$HOME/user/$user"
+main="$HOME"
+
+if [ -z "$QUIET" ]
+then
+    echo -n "Welcome to the Sage Days " >& 2
+    cat "$HOME/.sd.num" >& 2
+    echo " project" >& 2
+    echo "You are '$user'" >& 2
+    echo "Your HOME is '$home'" >& 2
+    echo
+fi
+
+if [ ! -d "$home" ]
+then
+	echo "ERROR: home doesn't exist, have you run 'setup_user'?" >& 2
+	exit 1
+fi
+
+export USER="$user"
+export HOME="$home"
+export MAIN="$main"
+
+if [ -n "$SSH_ORIGINAL_COMMAND" ]
+then
+	$SSH_ORIGINAL_COMMAND
+else
+	exec bash 
+fi
