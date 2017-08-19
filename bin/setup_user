@@ -53,12 +53,16 @@ def configure_trac(username, HOME):
         print "Your configuration has been stored in ~/user/{0}/.gitconfig".format(username)
 
 def configure_ssh(username, HOME):
-    ssh_id = opj(HOME,'.ssh','id_rsa')
+    ssh_folder = opj(HOME,'.ssh')
+    if not ope(ssh_folder):
+        os.mkdir(ssh_folder)
+    ssh_id = opj(ssh_folder,'id_rsa')
     if not ope(ssh_id):
-        subprocess.call(['ssh-keygen', '-q', '-N', '""', '-C', '%s@sd%s'%(username,SDNUM), '-f', ssh_id])
+        #subprocess.call(['ssh-keygen', '-q', '-N', '""', '-C', '%s@sd%s'%(username,SDNUM), '-f', ssh_id])
+        subprocess.call('ssh-keygen -q -N "" -C %s@sd%s -f %s'%(username, SDNUM, ssh_id), shell=True)
     print "Please log into trac and copy the following ssh key to"
     print "https://trac.sagemath.org/prefs/sshkeys (MAKE SURE TO DELETE NEWLINES)\n"
-    with open(opj(HOME,'.ssh','id_rsa.pub')) as F:
+    with open(opj(ssh_folder,'id_rsa.pub')) as F:
         pubkey = ""
         for line in F:
             pubkey += line
