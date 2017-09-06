@@ -4,6 +4,7 @@
 !Terms/Admin.term
 !bin/.init_user
 !bin/setup_user
+!bin/new_sage
 !user/template/.bash_aliases
 !user/template/.bash_profile
 !user/template/.bashrc

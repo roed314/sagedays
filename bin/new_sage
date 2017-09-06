@@ -1,0 +1,63 @@
+#! /usr/bin/env python
+
+import subprocess, argparse, shutil, os, sys, time
+opj = os.path.join
+ope = os.path.exists
+def find_project_id(path):
+    dirs = []
+    base, newdir = os.path.split(path)
+    while newdir:
+        dirs.insert(0,newdir)
+        base, newdir = os.path.split(base)
+    if len(dirs) < 2 or dirs[0] != 'projects':
+        print "You must run setup_user inside a project!"
+        sys.exit(1)
+    return dirs[1]
+def find_project(path):
+    return opj('/projects',find_project_id(path))
+CUR_DIR = os.getcwd()
+parser = argparse.ArgumentParser(description="Clone a new sage install")
+parser.add_argument('names', help='the names of your new installs', nargs='*')
+args = parser.parse_args()
+if not args.names:
+    name = os.environ['USER']
+    if name == find_project_id(CUR_DIR):
+        print "You must either specify a name or run within your own terminal"
+        sys.exit(1)
+    else:
+        args.names = [name]
+MAIN = find_project(CUR_DIR)
+SRC = opj(MAIN,'Src')
+bad_locs = []
+lockfile = opj(MAIN,".newsage.lock")
+if ope(lockfile):
+    print "Someone else is extracting the tarball; waiting until they have finished."
+    print "If you believe that this is in error, you can delete"
+    print "    " + lockfile
+    while True:
+        time.sleep(0.2)
+        if not ope(lockfile):
+            print "Lockfile cleared; proceeding."
+            break
+
+try:
+    with open(lockfile,"a"):
+        os.utime(lockfile, None)
+    for name in args.names:
+        short_loc = "sage-" + name
+        full_loc = opj(SRC,short_loc)
+        if ope(full_loc):
+            print full_loc + " already exists!"
+            continue
+        print "Extracting tarball to %s...."%short_loc
+        subprocess.call(['tar','-xf',opj(SRC,'sage-latest.tar'),'-C',SRC])
+        shutil.move(opj(SRC,"SageMath"), full_loc)
+        os.chdir(full_loc)
+        print "Setting git remotes"
+        subprocess.call(["git", "remote", "add", "trac", "git://trac.sagemath.org/sage.git"])
+        subprocess.call(["git", "remote", "set-url", "--push", "trac", "git@trac.sagemath.org:sage.git"])
+        print "Relocating paths"
+        subprocess.call(["./relocate-once.py", "-d", os.getcwd()])
+finally:
+    os.unlink(lockfile)
+os.chdir(CUR_DIR)
