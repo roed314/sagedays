@@ -97,7 +97,7 @@ def configure_bashrc(username, HOME, interactive=True):
         F.write('\nalias sage=%s'%(opj(MAIN,'Src','sage-%s'%username,'sage')))
 
 def configure_jupyter(username, name):
-    kernel_loc = opj(MAIN, '.local', 'share', 'jupyter', 'runtime', 'kernels', 'sage%s'%username)
+    kernel_loc = opj(MAIN, '.local', 'share', 'jupyter', 'kernels', 'sage%s'%username)
     if not ope(kernel_loc):
         os.makedirs(kernel_loc)
     with open(opj(kernel_loc, 'kernel.json'), 'w') as F:
@@ -155,4 +155,5 @@ else:
         configure_ssh(username, HOME, interactive=False)
         configure_term(username)
         configure_bashrc(username, HOME, interactive=False)
+        #configure_jupyter(username, name)
     print "Setup complete!"
