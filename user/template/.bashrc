@@ -12,7 +12,7 @@ PS1='\u@\h:\w\$ '
 # this so user and host show something short and sensible
 # Don't change these, change PS1 above instead
 PS1="${PS1//\\u/$USER}"
-PS1="${PS1//\\h/sd88}"
+PS1="${PS1//\\h/sd$SDNUM}"
 PS1="${PS1//\\w/\$(printf \$\{PWD/\$MAIN/≈\})}"
 export PS1
 

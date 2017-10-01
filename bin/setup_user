@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-import os, sys, shutil, getpass, subprocess, random, time
+import os, sys, shutil, getpass, subprocess, random, time, argparse
 opj = os.path.join
 ope = os.path.exists
 def find_project(path):
@@ -33,11 +33,12 @@ def create_homedir(username):
 def configure_git():
     name = raw_input("Your name (for git commits): ")
     email = raw_input("Your email (for git commits): ")
-    subprocess.call(['git', 'config', '--global', 'user.name', '"%s"'%name])
-    subprocess.call(['git', 'config', '--global', 'user.email', '"%s"'%email])
+    subprocess.call(['git', 'config', '--global', 'user.name', '%s'%name])
+    subprocess.call(['git', 'config', '--global', 'user.email', '%s'%email])
+    return name
 
 def configure_trac(username, HOME):
-    subprocess.call(['git', 'config', '--global', 'trac.username', '"%s"'%username])
+    subprocess.call(['git', 'config', '--global', 'trac.username', '%s'%username])
     save_password = raw_input("Do you want to save your trac password? [Y/n]: ")
     if save_password and save_password[0].lower() == 'n':
         with open(opj(HOME, '.trac'), 'w') as F:
@@ -49,10 +50,10 @@ def configure_trac(username, HOME):
             password2 = getpass.getpass("Enter your password again: ")
             if password == password2: break
             print "Passwords did not match"
-        subprocess.call(['git', 'config', '--global', 'trac.password', '"%s"'%password])
+        subprocess.call(['git', 'config', '--global', 'trac.password', '%s'%password])
         print "Your configuration has been stored in ~/user/{0}/.gitconfig".format(username)
 
-def configure_ssh(username, HOME):
+def configure_ssh(username, HOME, interactive=True):
     ssh_folder = opj(HOME,'.ssh')
     if not ope(ssh_folder):
         os.mkdir(ssh_folder)
@@ -60,16 +61,17 @@ def configure_ssh(username, HOME):
     if not ope(ssh_id):
         #subprocess.call(['ssh-keygen', '-q', '-N', '""', '-C', '%s@sd%s'%(username,SDNUM), '-f', ssh_id])
         subprocess.call('ssh-keygen -q -N "" -C %s@sd%s -f %s'%(username, SDNUM, ssh_id), shell=True)
-    print "Please log into trac and copy the following ssh key to"
-    print "https://trac.sagemath.org/prefs/sshkeys (MAKE SURE TO DELETE NEWLINES)\n"
-    with open(opj(ssh_folder,'id_rsa.pub')) as F:
-        pubkey = ""
-        for line in F:
-            pubkey += line
-    print pubkey + "\n"
-    print """If you want to be able to ssh into the project from your laptop, you must add a line to
+    if interactive:
+        print "Please log into trac and copy the following ssh key to"
+        print "https://trac.sagemath.org/prefs/sshkeys (MAKE SURE TO DELETE NEWLINES)\n"
+        with open(opj(ssh_folder,'id_rsa.pub')) as F:
+            pubkey = ""
+            for line in F:
+                pubkey += line
+        print pubkey + "\n"
+        print """If you want to be able to ssh into the project from your laptop, you must add a line to
 
-    '{0}/.ssh/authorized_keys'
+    '{0}/authorized_keys'
 
 of the following form:
 
@@ -85,56 +87,72 @@ def configure_term(username):
     with open(opj(MAIN, 'Terms', '.{0}.term.init'.format(username)), 'w') as F:
         F.write('exec .init_user %s'%username)
 
-def configure_bashrc(username, HOME):
-    editor = raw_input("What editor would you like to use for git commits (e.g. emacs, vim or nano)? ")
-    with open(opj(HOME, '.bashrc'),'a') as F:
-        F.write('\nexport EDITOR="%s"'%editor)
+def configure_bashrc(username, HOME, interactive=True):
+    if interactive:
+        editor = raw_input("What editor would you like to use for git commits (e.g. emacs, vim or nano)? ")
+        if editor:
+            with open(opj(HOME, '.bashrc'),'a') as F:
+                F.write('\nexport EDITOR="%s"'%editor)
     with open(opj(HOME, '.bash_aliases'),'a') as F:
         F.write('\nalias sage=%s'%(opj(MAIN,'Src','sage-%s'%username,'sage')))
 
-def configure_new_sage(username):
-    if ope(opj(MAIN,'Src','sage-%s'%username)):
-        print "sage-%s already exists"%username
-        return
-    print "Setting up your personal copy of Sage"
-    lockfile = opj(MAIN,'Src','.newsage.lock')
-    if ope(lockfile):
-        print "Someone else is extracting the tarball; waiting until they have finished."
-        print "If you believe that this is in error, you can delete"
-        print "    'lockfile'"
-        while True:
-            time.sleep(0.2)
-            if not ope(lockfile):
-                print "Lockfile cleared; proceeding."
-                break
-    try:
-        with open(lockfile,"a"):
-            os.utime(lockfile, None)
-        print "Extracting tarball...."
-        subprocess.call('ionice lz4 -dc --no-sparse sage-latest.tar.lz4 | tar xf -', shell=True)
-        short_loc = "sage-%s"%username
-        full_loc = opj(MAIN,'Src',short_loc)
-        print "Changing name to " + sageloc
-        shutil.move(opj(MAIN,'Src','SageMath'),full_loc)
-    finally:
-        os.unlink(lockfile)
-    os.chdir(full_loc)
-    print "Setting git remotes"
-    subprocess.call(["git", "remote", "add", "trac", "git://trac.sagemath.org/sage.git"])
-    subprocess.call(["git", "remote", "set-url", "--push", "trac", "git@trac.sagemath.org:sage.git"])
-    print "Relocating paths"
-    subprocess.call([opj(full_loc,"relocate-once.py"), "-d", full_loc])
+def configure_jupyter(username, name):
+    kernel_loc = opj(MAIN, '.local', 'share', 'jupyter', 'runtime', 'kernels', 'sage%s'%username)
+    if not ope(kernel_loc):
+        os.makedirs(kernel_loc)
+    with open(opj(kernel_loc, 'kernel.json'), 'w') as F:
+        F.write("""{
+ "display_name": "%s's SageMath",
+ "argv": ["%s", "--python", "-m", "sage.repl.ipython_kernel","--matplotlib=inline", "-f", "{connection_file}"]
+}"""%(name, opj(MAIN, 'Src', 'sage-%s'%username, 'sage')))
 
 def init_user():
     print "This script will set up your user for the Sage Days {0} project (sd{0})\n\nWe need you to answer a few questions.".format(SDNUM)
     username = raw_input("Your trac username: ")
     HOME = create_homedir(username)
-    configure_git()
+    name = configure_git()
     configure_trac(username, HOME)
     configure_ssh(username, HOME)
     configure_term(username)
     configure_bashrc(username, HOME)
-    #configure_new_sage(username)
+    #configure_jupyter(username, name)
     print "\nSetup complete!\nNext steps:\n  * copy your ssh key (above) to trac\n  * add your laptop's key to authorized_keys\n  * start using your own terminal"
 
-init_user()
+parser = argparse.ArgumentParser(description="Setup user")
+parser.add_argument('userfile', help='file giving user data (one line per user, comma separated fields): trac username, full name, e-mail, optional trac password', nargs='?')
+args = parser.parse_args()
+if args.userfile is None:
+    init_user()
+else:
+    if not ope(args.userfile):
+        print "%s does not exist"%args.userfile
+        sys.exit(1)
+    with open(args.userfile) as F:
+        lines = [[c.strip() for c in x.split(',')] for x in F.readlines()]
+    if not all(len(L) in [3,4] for L in lines):
+        print "All lines must have three or four entries (comma separated)"
+        sys.exit(1)
+    if any(' ' in L[0] for L in lines):
+        print "Trac usernames may not have spaces"
+        sys.exit(1)
+    for L in lines:
+        if len(L) == 3:
+            username, name, email = L
+            password = None
+        else:
+            username, name, email, password = L
+        if ope(opj(MAIN, "user", username)):
+            continue
+        HOME = create_homedir(username)
+        subprocess.call(['git', 'config', '--global', 'trac.username', '%s'%username])
+        subprocess.call(['git', 'config', '--global', 'user.name', '%s'%name])
+        subprocess.call(['git', 'config', '--global', 'user.email', '%s'%email])
+        if password is None:
+            with open(opj(HOME, '.trac'), 'w') as F:
+                F.write('echo -n "Please enter your trac password: "\nread -s TRAC_PASSWORD\necho\nexport TRAC_PASSWORD')
+        else:
+            subprocess.call(['git', 'config', '--global', 'trac.password', '%s'%password])
+        configure_ssh(username, HOME, interactive=False)
+        configure_term(username)
+        configure_bashrc(username, HOME, interactive=False)
+    print "Setup complete!"

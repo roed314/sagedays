@@ -10,8 +10,8 @@ _make_nice ()
 {
     if [ $# -eq 1 -a "$1" = build ]
     then
-        mkdir -p "/tmp/$USER"
-        tmpfile=`mktemp -p "/tmp/$USER"`
+        mkdir -p "/tmp/$USER$SDNUM"
+        tmpfile=`mktemp -p "/tmp/$USER$SDNUM"`
         echo "Building Sage; output is being sent to $tmpfile"
         SAGE_NUM_THREADS=40 nice ionice \make build > "$tmpfile"
         tail -n 80 "$tmpfile"

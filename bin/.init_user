@@ -16,11 +16,12 @@ esac
 user="$1"
 home="$HOME/user/$user"
 main="$HOME"
+sdnum=`cat "$main/.sd.num"`
 
 if [ -z "$QUIET" ]
 then
     echo -n "Welcome to the Sage Days " >& 2
-    cat "$HOME/.sd.num" >& 2
+    echo "$sdnum" >& 2
     echo " project" >& 2
     echo "You are '$user'" >& 2
     echo "Your HOME is '$home'" >& 2
@@ -36,6 +37,7 @@ fi
 export USER="$user"
 export HOME="$home"
 export MAIN="$main"
+export SDNUM="$sdnum"
 
 if [ -n "$SSH_ORIGINAL_COMMAND" ]
 then

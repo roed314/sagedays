@@ -1,0 +1,43 @@
+#! /usr/bin/env python
+
+import subprocess, os, sys, shutil
+
+
+opj = os.path.join
+ope = os.path.exists
+def find_project_id(path):
+    dirs = []
+    base, newdir = os.path.split(path)
+    while newdir:
+        dirs.insert(0,newdir)
+        base, newdir = os.path.split(base)
+    if len(dirs) < 2 or dirs[0] != 'projects':
+        print "You must run setup_user inside a project!"
+        sys.exit(1)
+    return dirs[1]
+
+def find_project(path):
+    return opj('/projects',find_project_id(path))
+CUR_DIR = os.getcwd()
+MAIN = find_project(CUR_DIR)
+
+def call(cmd_list, err_msg, **kwds):
+    err = subprocess.call(cmd_list,**kwds)
+    if err:
+        print err_msg
+        sys.exit(err)
+
+def refresh_sage_tarball():
+    Src_latest = opj(MAIN,'Src','sage-latest.tar')
+    dist_latest = opj('dist','sage-latest.tar')
+    if not ope(Src_latest):
+        print "Refreshing Sage tarball.  This process will take some time."
+        print "You can track progress by running\n    'tail -f %s/Src/binary-pkg/make.out'\nin another terminal"%MAIN
+        os.chdir(opj(MAIN,'Src','binary-pkg'))
+        with open('make.out','w') as F:
+            call(['make','package-sage'],
+                 "Making Sage binary failed.",
+                 stdout=F, stderr=subprocess.STDOUT)
+        shutil.move(dist_latest,Src_latest)
+
+refresh_sage_tarball()

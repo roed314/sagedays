@@ -43,6 +43,8 @@ if ope(lockfile):
 try:
     with open(lockfile,"a"):
         os.utime(lockfile, None)
+    parallel_env = os.environ.copy()
+    parallel_env['SAGE_NUM_THREADS'] = '40'
     for name in args.names:
         short_loc = "sage-" + name
         full_loc = opj(SRC,short_loc)
@@ -50,7 +52,10 @@ try:
             print full_loc + " already exists!"
             continue
         print "Extracting tarball to %s...."%short_loc
-        subprocess.call(['tar','-xf',opj(SRC,'sage-latest.tar'),'-C',SRC])
+        err = subprocess.call(['tar','-xf',opj(SRC,'sage-latest.tar'),'-C',SRC])
+        if err:
+            print "Error extracting %s"%(opj(SRC,'sage-latest.tar'))
+            sys.exit(err)
         shutil.move(opj(SRC,"SageMath"), full_loc)
         os.chdir(full_loc)
         print "Setting git remotes"
@@ -58,6 +63,11 @@ try:
         subprocess.call(["git", "remote", "set-url", "--push", "trac", "git@trac.sagemath.org:sage.git"])
         print "Relocating paths"
         subprocess.call(["./relocate-once.py", "-d", os.getcwd()])
+        print "Building new Sage"
+        err = subprocess.call(["nice", "ionice", "make"], env=parallel_env)
+        if err:
+            print "Error building %s"%(short_loc)
+            sys.exit(err)
 finally:
     os.unlink(lockfile)
 os.chdir(CUR_DIR)

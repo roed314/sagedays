@@ -1,0 +1,18 @@
+#!/usr/bin/env python
+import os, sys
+opj = os.path.join
+ope = os.path.exists
+SDNUM = os.environ.get('SDNUM')
+HOME = os.environ.get('HOME')
+if not SDNUM:
+    # not running in a personal terminal
+    username = raw_input("What is your trac username? ")
+    HOME = opj(HOME, 'user', username)
+    if not ope(HOME):
+        print "You must run setup_user: your home directory does not exist"
+        sys.exit(1)
+
+editor = raw_input("What editor would you like to use for git commits (e.g. emacs, vim or nano)? ")
+if editor:
+    with open(opj(HOME, '.bashrc'),'a') as F:
+        F.write('\nexport EDITOR="%s"'%editor)

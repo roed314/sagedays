@@ -8,7 +8,6 @@ try:
     os.mkdir(opj(MAIN,'Src'))
 except OSError:
     pass
-CUR_DIR = os.getcwd()
 
 def call(cmd_list, err_msg, **kwds):
     err = subprocess.call(cmd_list,**kwds)
@@ -43,6 +42,18 @@ def modify_bashrc():
         contents.insert(0,"export PATH=$HOME/bin:$HOME/.local/bin:$PATH\n")
         rewrite(bashrc, contents)
 
+def create_authorized_keys_link():
+    try:
+        os.mkdir(opj(MAIN,'.ssh'))
+    except OSError:
+        pass
+    authkeys = opj(MAIN,'.ssh','authorized_keys')
+    open(authkeys, 'a').close()
+    try:
+        os.symlink(opj(MAIN,'authorized_keys'),authkeys)
+    except OSError:
+        pass
+
 def lock_gitconfig():
     config = opj(MAIN,'.gitconfig')
     if not ope(config):
@@ -71,7 +82,6 @@ def setup_git_tab_completion():
 
 def setup_binary_pkg():
     sageyaml = opj(MAIN,'Src','binary-pkg','sage.yaml')
-    sageyamltmp = opj(
     if not ope(sageyaml):
         print "Downloading binary-pkg...."
         os.chdir(opj(MAIN,'Src'))
@@ -83,12 +93,12 @@ def setup_binary_pkg():
             contents.append(line.replace("SAGE_FAT_BINARY=yes",
                                          "SAGE_FAT_BINARY=no").replace(
                 "tar cjf {dist}/sage-runtime-{version}-{osname}-{arch}.tar.bz2 {path}",
-                "tar c {path} | lz4 -z - {dist}/sage-latest.tar.lz4"))
+                "tar cf {dist}/sage-latest.tar {path}"))
     rewrite(sageyaml, contents)
 
 def create_sage_tarball():
-    Src_latest = opj(MAIN,'Src','sage-latest.tar.lz4')
-    dist_latest = opj('dist','sage-latest.tar.lz4')
+    Src_latest = opj(MAIN,'Src','sage-latest.tar')
+    dist_latest = opj('dist','sage-latest.tar')
     if not ope(Src_latest):
         print "Creating Sage tarball.  This process will take some time."
         print "You can track progress by running\n    'tail -f %s/Src/binary-pkg/make.out'\nin another terminal"%MAIN
@@ -103,7 +113,8 @@ def setup():
     print "Setting up Sage Days environment...."
     set_sagedays_number()
     modify_bashrc()
-    lock_gitconfig()
+    create_authorized_keys_link()
+    #lock_gitconfig() # not necessary since no top level .git
     setup_git_trac()
     setup_git_tab_completion()
     setup_binary_pkg()
