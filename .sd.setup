@@ -92,7 +92,7 @@ def setup_binary_pkg():
         for line in F:
             contents.append(line.replace("SAGE_FAT_BINARY=yes",
                                          "SAGE_FAT_BINARY=no").replace(
-                "tar cjf {dist}/sage-runtime-{version}-{osname}-{arch}.tar.bz2 {path}",
+                "tar cjf {dist}/sage-{version}-{osname}-{arch}.tar.bz2 {path}",
                 "tar cf {dist}/sage-latest.tar {path}"))
     rewrite(sageyaml, contents)
 
